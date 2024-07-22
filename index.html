@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drag and Drop Image with Upscale</title>
+    <style>
+        body {
+            font-family: 'Helvetica', sans-serif;
+            font-weight: bold;
+            background-color: #f4f4f4;
+            text-align: center;
+            margin: 0;
+            padding: 0;
+        }
+        .drop-box {
+            width: 300px;
+            height: 300px;
+            border: 2px dashed #cccccc;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 50px auto;
+            position: relative;
+            background-color: #ffffff;
+        }
+        .drop-box img {
+            max-width: 100%;
+            max-height: 100%;
+            border-radius: 15px;
+            display: none;
+            position: absolute;
+        }
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            display: none;
+        }
+        .upscale-button, .download-button {
+            border: none;
+            border-radius: 10px;
+            padding: 15px 30px;
+            font-size: 16px;
+            cursor: pointer;
+            color: #ffffff;
+            background-color: #000000;
+            margin: 20px auto;
+            transition: background-color 0.3s ease;
+            font-family: 'Helvetica', sans-serif;
+            font-weight: bold;
+        }
+        .upscale-button:hover, .download-button:hover {
+            background-color: #333333;
+        }
+        .download-button {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+<div class="drop-box" id="dropBox">
+    <p>Drag and drop an image here</p>
+    <img id="droppedImage" />
+    <div class="loading-overlay" id="loadingOverlay">Loading...</div>
+</div>
+
+<button class="upscale-button" id="upscaleButton">Upscale Image</button>
+<button class="download-button" id="downloadButton">Download Image</button>
+
+<script>
+    const dropBox = document.getElementById('dropBox');
+    const droppedImage = document.getElementById('droppedImage');
+    const upscaleButton = document.getElementById('upscaleButton');
+    const downloadButton = document.getElementById('downloadButton');
+    const loadingOverlay = document.getElementById('loadingOverlay');
+    let imageData;
+    let file;
+    let upscaledImageURL;
+
+    dropBox.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropBox.style.borderColor = '#0000ff';
+    });
+
+    dropBox.addEventListener('dragleave', () => {
+        dropBox.style.borderColor = '#cccccc';
+    });
+
+    dropBox.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropBox.style.borderColor = '#cccccc';
+        file = e.dataTransfer.files[0];
+        if (file && file.type.startsWith('image/')) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                imageData = event.target.result;
+                droppedImage.src = imageData;
+                droppedImage.style.display = 'block';
+                dropBox.querySelector('p').style.display = 'none';
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+
+    upscaleButton.addEventListener('click', async () => {
+        if (!file) {
+            alert("Please drop an image first.");
+            return;
+        }
+
+        loadingOverlay.style.display = 'flex';
+
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('data', JSON.stringify({
+                "operations": {
+                    "resizing": {
+                        "width": 2000,  // Increased width for higher resolution
+                        "height": 2000, // Increased height for higher resolution
+                        "fit": "contain" // Ensure the entire image is shown without cropping
+                    },
+                    "restorations": {
+                        "upscale": "smart_enhance"
+                    }
+                },
+                "output": {
+                    "format": {
+                        "type": "jpeg",
+                        "quality": 90,  // Increased quality
+                        "progressive": true
+                    }
+                }
+            }));
+
+            const response = await fetch('https://api.claid.ai/v1-beta1/image/edit/upload', {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer 94110d2b14144707a43ac4ebeaafd0bb'
+                },
+                body: formData
+            });
+
+            const result = await response.json();
+            upscaledImageURL = result.data.output.tmp_url;
+            droppedImage.src = upscaledImageURL;
+            downloadButton.style.display = 'block';
+        } catch (error) {
+            alert("Failed to upscale image.");
+            console.error(error);
+        } finally {
+            loadingOverlay.style.display = 'none';
+        }
+    });
+
+    downloadButton.addEventListener('click', () => {
+        if (!upscaledImageURL) {
+            alert("No upscaled image to download.");
+            return;
+        }
+
+        // Create a temporary anchor element for downloading
+        const link = document.createElement('a');
+        link.href = upscaledImageURL;
+        link.download = 'upscaled-image.jpg'; // Set the filename for download
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    });
+</script>
+
+</body>
+</html>
