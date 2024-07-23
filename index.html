@@ -127,8 +127,7 @@
             formData.append('data', JSON.stringify({
                 "operations": {
                     "resizing": {
-                        "width": 2000,  // Increased width for higher resolution
-                        "height": 2000, // Increased height for higher resolution
+                        "width": 1000,  // Simplified width for upscaling
                         "fit": "contain" // Ensure the entire image is shown without cropping
                     },
                     "restorations": {
@@ -138,7 +137,7 @@
                 "output": {
                     "format": {
                         "type": "jpeg",
-                        "quality": 90,  // Increased quality
+                        "quality": 80,  // Simplified quality
                         "progressive": true
                     }
                 }
